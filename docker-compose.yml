@@ -1,0 +1,142 @@
+# Infra starts by default:            docker compose up -d
+# Full stack (all apps + frontend):   docker compose --profile apps up --build
+# Work on one service in your IDE: start infra only, run your service locally.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  api-gateway:
+    profiles: ["apps"]
+    build: ./services/api-gateway
+    ports: ["8080:8080"]
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      CORE_SERVICE_URL: http://core-service:8083
+      ANALYTICS_SERVICE_URL: http://analytics-service:8084
+      NOTIFICATION_SERVICE_URL: http://notification-service:8085
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on: [auth-service, user-service, core-service, analytics-service, notification-service]
+
+  auth-service:
+    profiles: ["apps"]
+    build: ./services/auth-service
+    ports: ["8081:8081"]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/auth_db
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBITMQ_USER}
+      RABBIT_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  user-service:
+    profiles: ["apps"]
+    build: ./services/user-service
+    ports: ["8082:8082"]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/user_db
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  core-service:
+    profiles: ["apps"]
+    build: ./services/core-service
+    ports: ["8083:8083"]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/core_db
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBITMQ_USER}
+      RABBIT_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  analytics-service:
+    profiles: ["apps"]
+    build: ./services/analytics-service
+    ports: ["8084:8084"]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/analytics_db
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBITMQ_USER}
+      RABBIT_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  notification-service:
+    profiles: ["apps"]
+    build: ./services/notification-service
+    ports: ["8085:8085"]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/notification_db
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBITMQ_USER}
+      RABBIT_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  frontend:
+    profiles: ["apps"]
+    build: ./frontend
+    ports: ["3000:80"]
+    depends_on: [api-gateway]
+
+volumes:
+  pgdata:

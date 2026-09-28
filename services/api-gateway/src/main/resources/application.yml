@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/auth/**
+            - id: user-service
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/users/**,/api/admin/users/**
+            - id: core-service
+              uri: ${CORE_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/work-items/**
+            - id: analytics-service
+              uri: ${ANALYTICS_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/analytics/**,/ws/**
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/notifications/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

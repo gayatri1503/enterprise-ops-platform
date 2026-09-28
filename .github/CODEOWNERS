@@ -1,0 +1,14 @@
+# Replace the placeholders with real GitHub usernames.
+# S1 = Frontend, S2 = Security/Gateway, S3 = Backend/Data, S4 = Analytics/DevOps
+/frontend/                       @student1-github
+/services/api-gateway/           @student2-github
+/services/auth-service/          @student2-github
+/services/user-service/          @student2-github
+/services/core-service/          @student3-github
+/services/analytics-service/     @student4-github
+/services/notification-service/  @student4-github
+/infra/                          @student4-github
+/docker-compose.yml              @student4-github
+/tests/load/                     @student4-github
+/docs/api-contract.md            @student3-github @student2-github
+/docs/events.md                  @student3-github @student4-github

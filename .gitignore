@@ -1,0 +1,21 @@
+# secrets
+.env
+*.pem
+*.key
+
+# java
+target/
+*.class
+*.log
+
+# node
+node_modules/
+dist/
+
+# IDEs / OS
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
