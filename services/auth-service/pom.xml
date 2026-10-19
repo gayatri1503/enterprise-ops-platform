@@ -56,6 +56,12 @@
       <scope>runtime</scope>
     </dependency>
 
+        <!-- RabbitMQ: publishes security audit events (docs/events.md) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-amqp</artifactId>
+    </dependency>
+    
     <!-- JWT -->
     <dependency>
       <groupId>io.jsonwebtoken</groupId>

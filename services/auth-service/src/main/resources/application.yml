@@ -6,9 +6,6 @@ spring:
     name: auth-service
 
   datasource:
-    # Defaults let `mvn spring-boot:run` work straight after `docker compose up -d`
-    # (postgres is exposed on localhost:5432). Docker Compose overrides these
-    # via the `environment:` block when running the whole stack in containers.
     url: ${DB_URL:jdbc:postgresql://localhost:5432/auth_db}
     username: ${DB_USER:platform}
     password: ${DB_PASSWORD:change_me}
@@ -22,14 +19,22 @@ spring:
       hibernate:
         format_sql: true
 
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    username: ${RABBIT_USER:platform}
+    password: ${RABBIT_PASSWORD:change_me}
+    connection-timeout: 2s
+
 jwt:
-  # Same default in auth, core and gateway so local runs work without exporting anything.
   secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-to-32-plus-chars}
   access-ttl-minutes: 15
   refresh-ttl-days: 7
 
 auth:
-  cookie-secure: false   # set true when served over HTTPS
+  cookie-secure: false
+
+events:
+  exchange: platform.events
 
 management:
   endpoints:
