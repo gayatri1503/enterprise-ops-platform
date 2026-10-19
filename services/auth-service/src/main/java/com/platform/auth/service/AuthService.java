@@ -26,6 +26,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
+import com.platform.auth.events.UserEvents;
 
 @Service
 public class AuthService {
@@ -64,6 +65,7 @@ public class AuthService {
         // Role and department are fixed here on the server.
         User user = users.save(new User(
                 email, passwordEncoder.encode(request.password()), request.fullName().trim(), Role.USER, 1L));
+        UserEvents.publishRegistered(events, user); // new line
         return issueTokens(user); // registering also signs the user in
     }
 

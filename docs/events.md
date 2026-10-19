@@ -22,6 +22,7 @@ Consumers must be **idempotent**: remember processed `eventId`s so a redelivered
 | WORK_ITEM_STATUS_CHANGED | work-item.status-changed | core | analytics, notification | fromStatus, toStatus, completedAt? |
 | USER_LOGIN_SUCCESS | auth.login-success | auth | audit (analytics) | ip, userAgent |
 | USER_LOGIN_FAILED | auth.login-failed | auth | audit (analytics) | loginId, ip |
+| USER_REGISTERED | auth.user-registered | auth | user | email, fullName, role, departmentId, enabled |
 
 ## Queues
 
