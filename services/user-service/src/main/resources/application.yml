@@ -4,9 +4,28 @@ server:
 spring:
   application:
     name: user-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/user_db}
+    username: ${DB_USER:platform}
+    password: ${DB_PASSWORD:change_me}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    username: ${RABBIT_USER:platform}
+    password: ${RABBIT_PASSWORD:change_me}
+    connection-timeout: 2s
+    listener:
+      simple:
+        default-requeue-rejected: false # a bad message is dropped, not retried forever
 
 jwt:
   secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-to-32-plus-chars}
+
+events:
+  exchange: platform.events
 
 management:
   endpoints:
