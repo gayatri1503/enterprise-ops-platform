@@ -31,7 +31,9 @@ jwt:
   refresh-ttl-days: 7
 
 auth:
-  cookie-secure: false
+  cookie-secure: ${AUTH_COOKIE_SECURE:false}   # set to true in production (HTTPS required)
+  max-failed-attempts: ${AUTH_MAX_FAILED_ATTEMPTS:5}   # lock account after N consecutive failures
+  lockout-minutes: ${AUTH_LOCKOUT_MINUTES:15}           # lockout duration in minutes
 
 events:
   exchange: platform.events

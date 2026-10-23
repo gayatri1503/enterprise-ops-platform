@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false;MODE=PostgreSQL;NON_KEYWORDS=USER
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: false
+  # Disable RabbitMQ auto-configuration for tests
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+jwt:
+  secret: test-secret-that-is-at-least-32-characters-long
+  access-ttl-minutes: 15
+  refresh-ttl-days: 7
+
+auth:
+  cookie-secure: false
+  max-failed-attempts: 3   # low threshold so lockout tests don't need many attempts
+  lockout-minutes: 15
+
+events:
+  exchange: platform.events

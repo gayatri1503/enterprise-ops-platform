@@ -12,7 +12,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("update RefreshToken t set t.revoked = true where t.userId = :userId and t.revoked = false")
     int revokeAllForUser(@Param("userId") Long userId);
 }

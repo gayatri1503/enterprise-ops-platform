@@ -40,6 +40,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EventPublisher events;
     private final long refreshTtlDays;
+    private final int maxFailedAttempts;
+    private final long lockoutMinutes;
     private final SecureRandom random = new SecureRandom();
 
     public AuthService(UserRepository users,
@@ -47,13 +49,17 @@ public class AuthService {
                        JwtService jwtService,
                        PasswordEncoder passwordEncoder,
                        EventPublisher events,
-                       @Value("${jwt.refresh-ttl-days:7}") long refreshTtlDays) {
+                       @Value("${jwt.refresh-ttl-days:7}") long refreshTtlDays,
+                       @Value("${auth.max-failed-attempts:5}") int maxFailedAttempts,
+                       @Value("${auth.lockout-minutes:15}") long lockoutMinutes) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.events = events;
         this.refreshTtlDays = refreshTtlDays;
+        this.maxFailedAttempts = maxFailedAttempts;
+        this.lockoutMinutes = lockoutMinutes;
     }
 
     @Transactional
@@ -79,8 +85,19 @@ public class AuthService {
         }
 
         User user = found.get();
+
+        // Check temporary lockout before attempting password verification.
+        if (user.isLockedOut()) {
+            publishLoginFailed(user, request.getEmail(), ip);
+            throw new InvalidCredentialsException("Invalid email or password");
+        }
+
         if (!user.isEnabled() || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             user.recordFailedLogin();
+            // Apply lockout once the threshold is reached.
+            if (user.getFailedLoginAttempts() >= maxFailedAttempts) {
+                user.lockUntil(Instant.now().plus(lockoutMinutes, ChronoUnit.MINUTES));
+            }
             publishLoginFailed(user, request.getEmail(), ip);
             throw new InvalidCredentialsException("Invalid email or password");
         }
@@ -114,7 +131,7 @@ public class AuthService {
 
         User user = users.findById(stored.getUserId())
                 .filter(User::isEnabled)
-                .orElseThrow(() -> new InvalidCredentialsException("Account disabled"));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
 
         stored.revoke(); // rotation: the old token can never be used again
         return issueTokens(user);

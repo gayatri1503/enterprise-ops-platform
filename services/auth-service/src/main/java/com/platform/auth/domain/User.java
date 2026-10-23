@@ -33,6 +33,10 @@ public class User {
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts = 0;
 
+    /** Set when the account is temporarily locked after too many failed logins. Null = not locked. */
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -47,7 +51,17 @@ public class User {
     }
 
     public void recordFailedLogin() { failedLoginAttempts++; }
-    public void resetFailedLogins() { failedLoginAttempts = 0; }
+    public void resetFailedLogins() {
+        failedLoginAttempts = 0;
+        lockedUntil = null;
+    }
+    public void disable() { this.enabled = false; }
+    public void lockUntil(Instant until) { this.lockedUntil = until; }
+
+    /** True if a temporary lockout is currently active. */
+    public boolean isLockedOut() {
+        return lockedUntil != null && Instant.now().isBefore(lockedUntil);
+    }
 
     public Long getId() { return id; }
     public String getEmail() { return email; }
@@ -57,4 +71,5 @@ public class User {
     public Long getDepartmentId() { return departmentId; }
     public boolean isEnabled() { return enabled; }
     public int getFailedLoginAttempts() { return failedLoginAttempts; }
+    public Instant getLockedUntil() { return lockedUntil; }
 }
