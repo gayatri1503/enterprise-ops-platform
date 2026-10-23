@@ -79,7 +79,10 @@ public class WorkItemService {
     @Transactional
     public WorkItem assign(CurrentUser user, Long id, Long assigneeId) {
         WorkItem item = loadVisible(user, id);
-        // TODO (with user-service): verify the assignee exists and belongs to the same department.
+        // MANAGER may only assign within their own department (API contract: "WORK_ASSIGN: own dept")
+        if ("MANAGER".equals(user.role()) && !Objects.equals(user.departmentId(), item.getDepartmentId())) {
+            throw new AccessDeniedException("Managers can only assign within their own department");
+        }
         Long previous = item.getAssigneeId();
         if (Objects.equals(previous, assigneeId)) {
             return item; // nothing changed, so no event

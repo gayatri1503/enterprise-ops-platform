@@ -5,13 +5,14 @@ import java.time.Instant;
 
 /** user-service's own copy of a user, kept up to date by USER_REGISTERED events. */
 @Entity
-@Table(name = "user_profiles")
+@Table(name = "user_profiles",
+       indexes = @Index(name = "idx_user_profile_email", columnList = "email"))
 public class UserProfile {
 
     @Id
     private Long id; // same id as in auth-service, so NOT generated here
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String email;
 
     @Column(name = "full_name", nullable = false)

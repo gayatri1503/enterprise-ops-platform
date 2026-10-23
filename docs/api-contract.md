@@ -49,6 +49,7 @@ Permissions: `USER_READ`, `USER_MANAGE`, `WORK_CREATE`, `WORK_EDIT`, `WORK_ASSIG
 | PATCH | /api/work-items/{id}/status | core | WORK_EDIT | 2 |
 | PATCH | /api/work-items/{id}/assignee | core | WORK_ASSIGN | 2 |
 | POST | /api/work-items/{id}/comments | core | WORK_EDIT | 2 |
+| GET | /api/work-items/{id}/comments | core | authenticated (scoped) | 2 |
 | GET | /api/analytics/summary | analytics | ANALYTICS_VIEW | 2 |
 | GET | /api/analytics/trends | analytics | ANALYTICS_VIEW | 3 |
 | GET | /ws/analytics (or SSE `/api/analytics/stream`) | analytics | ANALYTICS_VIEW | 3 |
