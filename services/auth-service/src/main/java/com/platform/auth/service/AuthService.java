@@ -1,10 +1,13 @@
 package com.platform.auth.service;
 
 import com.platform.auth.domain.RefreshToken;
+import com.platform.auth.domain.Role;
 import com.platform.auth.domain.User;
 import com.platform.auth.dto.LoginRequest;
 import com.platform.auth.dto.LoginResponse;
+import com.platform.auth.dto.RegisterRequest;
 import com.platform.auth.dto.UserSummary;
+import com.platform.auth.events.EventPublisher;
 import com.platform.auth.repository.RefreshTokenRepository;
 import com.platform.auth.repository.UserRepository;
 import com.platform.auth.security.JwtService;
@@ -21,8 +24,9 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HexFormat;
-import com.platform.auth.domain.Role;
-import com.platform.auth.dto.RegisterRequest;
+import java.util.Map;
+import java.util.Optional;
+import com.platform.auth.events.UserEvents;
 
 @Service
 public class AuthService {
@@ -34,19 +38,28 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokens;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final EventPublisher events;
     private final long refreshTtlDays;
+    private final int maxFailedAttempts;
+    private final long lockoutMinutes;
     private final SecureRandom random = new SecureRandom();
 
     public AuthService(UserRepository users,
                        RefreshTokenRepository refreshTokens,
                        JwtService jwtService,
                        PasswordEncoder passwordEncoder,
-                       @Value("${jwt.refresh-ttl-days:7}") long refreshTtlDays) {
+                       EventPublisher events,
+                       @Value("${jwt.refresh-ttl-days:7}") long refreshTtlDays,
+                       @Value("${auth.max-failed-attempts:5}") int maxFailedAttempts,
+                       @Value("${auth.lockout-minutes:15}") long lockoutMinutes) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
+        this.events = events;
         this.refreshTtlDays = refreshTtlDays;
+        this.maxFailedAttempts = maxFailedAttempts;
+        this.lockoutMinutes = lockoutMinutes;
     }
 
     @Transactional
@@ -58,21 +71,44 @@ public class AuthService {
         // Role and department are fixed here on the server.
         User user = users.save(new User(
                 email, passwordEncoder.encode(request.password()), request.fullName().trim(), Role.USER, 1L));
+        UserEvents.publishRegistered(events, user); // new line
         return issueTokens(user); // registering also signs the user in
     }
 
     @Transactional(noRollbackFor = InvalidCredentialsException.class)
-    public AuthResult login(LoginRequest request) {
-        User user = users.findByEmailIgnoreCase(request.getEmail())
-                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
+    public AuthResult login(LoginRequest request, String ip, String userAgent) {
+        Optional<User> found = users.findByEmailIgnoreCase(request.getEmail());
+
+        if (found.isEmpty()) {
+            publishLoginFailed(null, request.getEmail(), ip);
+            throw new InvalidCredentialsException("Invalid email or password");
+        }
+
+        User user = found.get();
+
+        // Check temporary lockout before attempting password verification.
+        if (user.isLockedOut()) {
+            publishLoginFailed(user, request.getEmail(), ip);
+            throw new InvalidCredentialsException("Invalid email or password");
+        }
 
         if (!user.isEnabled() || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             user.recordFailedLogin();
+            // Apply lockout once the threshold is reached.
+            if (user.getFailedLoginAttempts() >= maxFailedAttempts) {
+                user.lockUntil(Instant.now().plus(lockoutMinutes, ChronoUnit.MINUTES));
+            }
+            publishLoginFailed(user, request.getEmail(), ip);
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
         user.resetFailedLogins();
-        return issueTokens(user);
+        AuthResult result = issueTokens(user);
+
+        events.publish("USER_LOGIN_SUCCESS", "auth.login-success",
+                String.valueOf(user.getId()), String.valueOf(user.getId()), user.getDepartmentId(),
+                Map.of("ip", orUnknown(ip), "userAgent", orUnknown(userAgent)));
+        return result;
     }
 
     @Transactional(noRollbackFor = InvalidCredentialsException.class)
@@ -95,7 +131,7 @@ public class AuthService {
 
         User user = users.findById(stored.getUserId())
                 .filter(User::isEnabled)
-                .orElseThrow(() -> new InvalidCredentialsException("Account disabled"));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
 
         stored.revoke(); // rotation: the old token can never be used again
         return issueTokens(user);
@@ -105,6 +141,19 @@ public class AuthService {
     public void logout(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) return;
         refreshTokens.findByTokenHash(sha256(rawToken)).ifPresent(RefreshToken::revoke);
+    }
+
+    private void publishLoginFailed(User user, String loginId, String ip) {
+        String id = user != null ? String.valueOf(user.getId()) : null;
+        events.publish("USER_LOGIN_FAILED", "auth.login-failed",
+                id != null ? id : "unknown",
+                id != null ? id : "anonymous",
+                user != null ? user.getDepartmentId() : null,
+                Map.of("loginId", loginId, "ip", orUnknown(ip)));
+    }
+
+    private static String orUnknown(String value) {
+        return (value == null || value.isBlank()) ? "unknown" : value;
     }
 
     private AuthResult issueTokens(User user) {
