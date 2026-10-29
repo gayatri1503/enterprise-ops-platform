@@ -20,7 +20,7 @@
   <description>Credentials, login, refresh-token rotation, security audit events</description>
 
   <properties>
-    <java.version>17</java.version>
+    <java.version>25</java.version>
   </properties>
 
   <dependencies>

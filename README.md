@@ -30,7 +30,7 @@ Git rules: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Prerequisites
 
-Git, Docker Desktop, JDK 21, Maven 3.9+, Node 20+.
+Git, Docker Desktop, JDK 25, Maven 3.9+, Node 20+.
 
 ## Quick start
 
