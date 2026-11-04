@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { assignWorkItem, changeStatus, createWorkItem, listWorkItems } from "../api/workItems";
 import type { PageResponse, Priority, UserSummary, WorkItem, WorkStatus } from "../types";
-
+import NotificationTestPanel from "./NotificationTestPanel";
 const STATUSES: WorkStatus[] = ["NEW", "IN_PROGRESS", "BLOCKED", "COMPLETED"];
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
@@ -81,6 +81,8 @@ export default function WorkItemsPage({ user }: { user: UserSummary }) {
 
   return (
     <div>
+      <NotificationTestPanel />
+
       <h2 style={{ marginTop: 0 }}>Work Items</h2>
 
       {can("WORK_CREATE") && (

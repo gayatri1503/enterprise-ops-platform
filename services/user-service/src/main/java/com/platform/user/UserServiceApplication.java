@@ -7,8 +7,13 @@ import java.util.TimeZone;
 
 @SpringBootApplication
 public class UserServiceApplication {
-    public static void main(String[] args) {
+
+    static {
         // Java calls India's zone "Asia/Calcutta"; newer Postgres rejects that alias.
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
+    }
+
+    public static void main(String[] args) {
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
         SpringApplication.run(UserServiceApplication.class, args);
     }

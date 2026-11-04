@@ -71,6 +71,9 @@ public class WorkItemService {
         payload.put("fromStatus", from.name());
         payload.put("toStatus", next.name());
         payload.put("completedAt", item.getCompletedAt() == null ? null : item.getCompletedAt().toString());
+        payload.put("title", item.getTitle());
+        payload.put("assigneeId", item.getAssigneeId());
+        payload.put("creatorId", item.getCreatorId());
         events.publish("WORK_ITEM_STATUS_CHANGED", "work-item.status-changed",
                 String.valueOf(item.getId()), String.valueOf(user.id()), item.getDepartmentId(), payload);
         return item;
@@ -89,6 +92,7 @@ public class WorkItemService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("assigneeId", assigneeId);
         payload.put("previousAssigneeId", previous); // null if it was unassigned
+        payload.put("title", item.getTitle());
         events.publish("WORK_ITEM_ASSIGNED", "work-item.assigned",
                 String.valueOf(item.getId()), String.valueOf(user.id()), item.getDepartmentId(), payload);
         return item;
